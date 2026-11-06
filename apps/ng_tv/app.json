@@ -1,0 +1,75 @@
+{
+  "id": "ng_tv",
+  "title": "G's TV",
+  "description": "EXPERIMENTAL. Video pictures on the centre screen while parked: Spelunkr channels (programmes on the Internet Archive) with a guide and channel up / down, or your own direct MP4 (H.264) links sent from your phone. Picture only in P at a standstill; video only, no sound yet. Optional playback in the cluster (G's Dash's pick on Auto) or the HUD while parked (needs the Cluster renderer tool). Needs internet through mgu-uplink.",
+  "version": "0.5.3",
+  "share": ["ng_gsdash/cluster/cluster_source.js", "ng_spotify/vendor/qrcodegen.js"],
+  "vendor": "ng",
+  "loggingId": "OAN3",
+  "internet": true,
+  "signals": {
+    "de.bmw.infotainment.vehicle.Vehicle2": {
+      "statusCarSpeed2": "rs"
+    },
+    "de.bmw.infrastructure.VehicleInformation": {
+      "statusGearboxDrive": "s",
+      "DataPowerTrain2": "s"
+    },
+    "de.bmw.infotainment.navigation.navigationstatus.NavigationStatus": {
+      "_optional": "the cluster picture's route guidance check (0.4.4): guidingState (ACTIVE: the picture leaves the cluster for the directions, the screen keeps playing); without it the phone's signals decide",
+      "guidingState": "rs"
+    },
+    "de.bmw.infotainment.a4a.carplay.CarPlayManager": {
+      "_optional": "the cluster picture's CarPlay route guidance check (Waze or Maps with a route): projectedGuidanceActive",
+      "_instances": "CarPlayManagerInst1",
+      "projectedGuidanceActive": "rs"
+    },
+    "de.bmw.infotainment.entertainment.mediaplayer.MediaPlayer": "*",
+    "de.bmw.infotainment.sdi.aap.androidautoprojectedmanager.AndroidAutoProjectedManager": {
+      "_optional": "the cluster picture's Android Auto route guidance check: projectedGuidanceActive",
+      "_instances": "AndroidAutoProjectedManagerInst1",
+      "projectedGuidanceActive": "rs"
+    }
+  },
+  "config": {
+    "comment": "Spelunkr: lineupUrl and channel (the first channel shown). streamUrl: one http(s) MP4 with H.264 video, played at the start instead of the home screen (testing). relay: the public phone page for Add source (https, holds no secrets); mailbox: the ntfy server the phone and the car meet on (messages are AES-256-GCM sealed). <data>/tv.json with lineupUrl / channel / streamUrl overrides these on the car.",
+    "lineupUrl": "https://data.spelunkr.tv/lineup.json",
+    "channel": "toonertia",
+    "streamUrl": "",
+    "relay": "https://nickgcode.github.io/idrive7-apps/tv/",
+    "mailbox": "https://ntfy.sh"
+  },
+  "screens": [
+    {
+      "name": "MAIN",
+      "kind": "canvas",
+      "title": "G's TV",
+      "fullscreen": true,
+      "buttons": [
+        ["BTN_PLAY", "Play"],
+        ["BTN_CHDN", "Ch -"],
+        ["BTN_CHUP", "Ch +"],
+        ["BTN_MORE", "More"]
+      ]
+    },
+    {
+      "name": "MORE",
+      "kind": "menu",
+      "title": "G's TV",
+      "settings": true,
+      "items": [
+        ["text", "MORE_INFO", ""],
+        ["scroll", "AUDIO_INFO", ""],
+        ["scroll", "SOUND_INFO", ""]
+      ]
+    }
+  ],
+  "settings": [
+    {"key": "maxFps", "label": "At most (GPU video)", "type": "number", "unit": "fps", "default": 30, "markDefault": true,
+     "steps": [10, 15, 20, 30]},
+    {"key": "afterDrive", "label": "After driving (Spelunkr)", "type": "choice", "default": "resume",
+     "options": [["resume", "Resume where I stopped"], ["live", "Jump to what's on now"]]}
+  ],
+  "_retiredSettings": "settings 0.4.1 had and 0.4.2 dropped: a saved value is deleted on start (kit/runtime/mgu.js). Pictures is always Auto, Colours always M Tricolour, the Renderer always the GPU one; the HUD test and the Full cluster / Side panels tests are gone (Cluster screen plays the video there instead); Play in HUD is the HUD button on the picture (its on / off kept by the app, not a setting). 0.4.3 dropped Cluster screen: the cluster picture is the centre map area only; Play in cluster is the Cluster button (its on / off kept by the app under 'cluster', as the HUD's, so it is not retired).",
+  "retiredSettings": ["mode", "theme", "renderer", "hudtest", "paneltest", "sidetest", "clusterScreen"]
+}

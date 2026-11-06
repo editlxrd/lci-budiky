@@ -1,0 +1,86 @@
+{
+  "id": "ng_spotify",
+  "title": "G's Music",
+  "description": "Full-screen Spotify player: album art, synced lyrics (LRCLIB) or a visualizer, big touch controls and a seek bar, sign-in by QR code from your phone, and a home-screen widget. While music plays, scrolling lyrics or the visualizer can show in the instrument cluster, and the lyrics in the HUD (picked in G's Dash, else its own setting, off by default), in a small, medium or large size; both need the Cluster renderer tool. Needs Spotify Premium and internet through mgu-uplink.",
+  "version": "0.9.1",
+  "share": ["ng_gsdash/cluster/cluster_source.js"],
+  "vendor": "ng",
+  "loggingId": "OAN2",
+  "internet": true,
+  "startWidget": {
+    "comment": "Home-screen widget, as G's Dash's (same layout: BMW's Drive Recorder widget on this firmware, upstream's apps/edrive). The big size is a picture main.js draws and pushes into BackgroundImage1 while the app runs: the album art with the title, artist and a progress line, or with nothing playing the G's Music logo (widget_logo.js from tools/make_gsmusic_icon.py). Everything sits centred inside 'safe' (share of width / height kept clear on each side: the HMI crops the edges and draws a dark vignette over them). The small size shows no pictures, so main.js writes the track into its text lines (Title, TextRecordings, TextCam, the progress bar, TimeRemaining), or the app's name; the cells below are the values on placement.",
+    "name": "G's Music",
+    "layout": "LT_Table_OnlineApps_DriveRecorderWidget",
+    "image": "BackgroundImage1",
+    "size": [384, 256],
+    "safe": [0.09, 0.1],
+    "cells": {
+      "ErrorInfo": [false, "Bool"],
+      "background": [true, "Bool"],
+      "Title": ["", "Text"],
+      "ProgressbarVisible": [false, "Bool"],
+      "Progress": [0, "Float"],
+      "TextRecordings": ["", "Text"],
+      "TextCam": ["", "Text"],
+      "TimeElapsed": ["", "Text"],
+      "TimeRemaining": ["", "Text"]
+    }
+  },
+  "screens": [
+    {
+      "name": "MAIN",
+      "kind": "canvas",
+      "title": "G's Music",
+      "fullscreen": true,
+      "buttons": [
+        ["BTN_BACKTRACK", "Previous"],
+        ["BTN_PLAY", "Play"],
+        ["BTN_SKIP", "Next"],
+        ["BTN_SHUFFLE", "Shuffle off"],
+        ["BTN_REPEAT", "Repeat off"],
+        ["BTN_LIKE", "Like"],
+        ["BTN_MORE", "More"]
+      ]
+    },
+    {
+      "name": "MORE",
+      "kind": "menu",
+      "title": "G's Music",
+      "settings": true,
+      "items": [
+        ["text", "MORE_INFO", ""],
+        ["button", "BTN_SIGNIN", "Sign in with phone (QR)"]
+      ]
+    }
+  ],
+  "signals": {
+    "de.bmw.infotainment.navigation.navigationstatus.NavigationStatus": {
+      "_optional": "the cluster picture's route guidance check: guidingState (ACTIVE hides the lyrics / visualizer in the cluster); without it the picture goes by the phone's signals, and with none it also shows during a route",
+      "guidingState": "rs"
+    },
+    "de.bmw.infotainment.a4a.carplay.CarPlayManager": {
+      "_optional": "the cluster picture's CarPlay route guidance check (Waze or Maps with a route): projectedGuidanceActive",
+      "_instances": "CarPlayManagerInst1",
+      "projectedGuidanceActive": "rs"
+    },
+    "de.bmw.infotainment.sdi.aap.androidautoprojectedmanager.AndroidAutoProjectedManager": {
+      "_optional": "the cluster picture's Android Auto route guidance check: projectedGuidanceActive",
+      "_instances": "AndroidAutoProjectedManagerInst1",
+      "projectedGuidanceActive": "rs"
+    }
+  },
+  "settings": [
+    {"key": "theme", "label": "Colours", "type": "choice", "default": "m_tricolour",
+     "options": [["m_red", "M Red"], ["m_tricolour", "M Tricolour"], ["ice", "Ice White"], ["amber", "Night Amber"]]},
+    {"key": "stage", "label": "Show", "type": "choice", "default": "lyrics",
+     "options": [["lyrics", "Lyrics (else visualizer)"], ["visualizer", "Visualizer"], ["off", "Nothing"]]},
+    {"key": "cluster", "label": "Cluster (map area)", "type": "choice", "default": "lyrics",
+     "options": [["off", "Off"], ["lyrics", "Lyrics + visualizer"], ["visualizer", "Visualizer only"]]},
+    {"key": "hud", "label": "HUD", "type": "choice", "default": "off",
+     "options": [["off", "Off"], ["lyrics", "Lyrics"]]},
+    {"key": "clusterSize", "label": "Cluster & HUD size", "type": "choice", "default": "medium",
+     "options": [["small", "Small"], ["medium", "Medium"], ["large", "Large"]]}
+  ],
+  "_retiredSettings": "settings 0.5.0 had and 0.5.1 dropped: a saved value is deleted on start (kit/runtime/mgu.js). Spotify is polled every 3 s, the renderer is always the GPU one, no demo data.",
+  "retiredSettings": ["poll", "renderer", "demo", "layout"]
+}

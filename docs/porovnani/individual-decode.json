@@ -1,0 +1,34 @@
+[
+  {
+    "raw": "SPORT_INDIVIDUAL",
+    "decoded": {
+      "mode": "INDIVIDUAL",
+      "raw": "SPORT_INDIVIDUAL",
+      "popup": false
+    }
+  },
+  {
+    "raw": "COMFORT_INDIVIDUAL",
+    "decoded": {
+      "mode": "INDIVIDUAL",
+      "raw": "COMFORT_INDIVIDUAL",
+      "popup": false
+    }
+  },
+  {
+    "raw": 3,
+    "decoded": {
+      "mode": "INDIVIDUAL",
+      "raw": 3,
+      "popup": false
+    }
+  },
+  {
+    "raw": 6,
+    "decoded": {
+      "mode": "INDIVIDUAL",
+      "raw": 6,
+      "popup": false
+    }
+  }
+]
