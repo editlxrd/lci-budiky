@@ -1,12 +1,15 @@
 {
   "schema": 1,
   "apps": {
-    "path": "apps/dv_lci_budiky",
+    "path": "apps/*",
     "manifest": "app.json",
     "icon": "icon.png",
     "exclude": [
       "_template",
-      "wip"
+      "wip",
+      "ng_gsdash",
+      "ng_spotify",
+      "ng_tv"
     ],
     "mguHmi": [
       "ID7"
