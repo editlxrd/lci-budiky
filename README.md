@@ -13,7 +13,7 @@ Geometrie vychází z naměřených oblastí M/Sport KOMBI v G’s Dash. Tato up
 ## Instalace přes MGU Store
 
 1. Měj nainstalovaný **Cluster renderer (`cluster-render`, nejméně 0.2.2)** z `robertnisipeanu/idrive-apps`.
-2. V MGU Store otevři **Settings → Add source** a přidej `GITHUB_OWNER/lci-budiky`.
+2. V MGU Store otevři **Settings → Add source** a přidej `editlxrd/lci-budiky`.
 3. Vyber zdroj z větve **main**, nainstaluj **LCI Budíky** a otevři jej v nabídce APPS.
 4. Ve stojícím autě v P a Sport Individual stiskni **Zapnout test (60 s)**. Stav aplikace musí potvrdit „Test běží“.
 5. Nejprve ověř původní kontrolky, dojezdy, malé ukazatele a mapu. Kdykoli použij **Vypnout test**. Pokud se cokoli překrývá, test vypni a zaznamenej obrazovku; další nastavení se v této verzi nekóduje.
