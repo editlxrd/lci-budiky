@@ -33,7 +33,7 @@ class Vehicle extends EventEmitter{
  ['de.bmw.infotainment.drivingexcitement.FES','1',500,{statusFESVehicleDynamicSwitchHMI:v=>put('mode',v&&v.actualValueModeDrivingExperience),statusActualValueTorque2:v=>put('torque',number(v,'actualValueTorqueCrankshaft',.5,-1023.5,4093))}],
  ['de.bmw.infotainment.vehicle.Vehicle','1',10000,{statusNewCurrentUnitsStatusExt:v=>{this.units=v||{};this.convertTyres();}}],
  ['de.bmw.infotainment.vehicle.TPMS','1',10000,{statusTyrePressure:v=>{this.tyres.p={v,at:this.now()};this.convertTyres();},statusTyreTemperature:v=>{this.tyres.t={v,at:this.now()};this.convertTyres();}}],
- ['de.bmw.infotainment.hmi.hmimediastate.HmiMediaState','1',1000,{playerMetadata:v=>{put('title',v&&v.firstLineText);put('artist',v&&v.secondLineText);}}],
+ ['de.bmw.infotainment.hmi.hmimediastate.HmiMediaState','HMI_CID',1000,{playerMetadata:v=>{put('title',v&&v.firstLineText);put('artist',v&&v.secondLineText);}}],
  ['de.bmw.infotainment.navigation.navigationstatus.NavigationStatus','1',1000,{guidingState:v=>{const x=v&&typeof v==='object'?v.guidingState:v;put('guidanceNav',x==='ACTIVE'||x===2);}}],
  ['de.bmw.infotainment.a4a.carplay.CarPlayManager','CarPlayManagerInst1',1000,{projectedGuidanceActive:v=>{const x=v&&typeof v==='object'?v.projectedGuidanceActive:v;put('guidanceCarPlay',x===true||x===1);}}]
  ];

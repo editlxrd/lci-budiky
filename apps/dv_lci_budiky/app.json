@@ -2,7 +2,7 @@
   "id": "dv_lci_budiky",
   "title": "LCI Budíky",
   "description": "LCI Budíky pro BMW 330e. Česká aplikace a vlastní červené G20 budíky, náhradní BC a diagnostika. První testovací verze: pouze potvrzené P, rychlost pod 1 km/h a Sport Individual, nejvýše 60 s. Při výpadku dat se vypne. Vytvořeno Davidem My (330e).",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "vendor": "dv",
   "loggingId": "DVLC",
   "iconGlyph": "gauge",
@@ -66,7 +66,8 @@
       "projectedGuidanceActive": "rs"
     },
     "de.bmw.infotainment.hmi.hmimediastate.HmiMediaState": {
-      "playerMetadata": "rs"
+      "playerMetadata": "rs",
+      "_instances": "HMI_CID"
     },
     "com.harman.infotainment.systemfunctions.tasu.tasu.InternalTasu": {
       "_instances": "SystemFunctionsInternalTasuInst1",

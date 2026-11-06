@@ -1,6 +1,6 @@
 {
   "name": "lci-budiky-source",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "scripts": {
     "test": "node kit/tools/test_lci.js"

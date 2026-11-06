@@ -11,7 +11,7 @@ with tempfile.TemporaryDirectory(prefix='lci-package-test-') as td:
     build_lci.build()
     stage=tmp/'dist/dv_lci_budiky/source'
     pkg=json.loads((stage/'package.json').read_text())
-    assert pkg['name']=='dv_lci_budiky' and pkg['version']=='0.3.0'
+    assert pkg['name']=='dv_lci_budiky' and pkg['version']=='0.3.1'
     assert pkg['author']=='David My (330e)' and pkg['license']=='GPL-3.0-or-later'
     assert pkg['mguHmi']==['ID7']
     manifest=json.loads((stage/'manifest.json').read_text())
@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory(prefix='lci-package-test-') as td:
     assert (stage/'javascript/licenses.pack').is_file()
     ui=json.loads((stage/'rhmiData/variantGroups/Common/texts/en_GB.json').read_text())
     assert 'LCI Budíky' in ui.values()
-    with tarfile.open(tmp/'dist/dv_lci_budiky@0.3.0.tgz') as tf:
+    with tarfile.open(tmp/'dist/dv_lci_budiky@0.3.1.tgz') as tf:
         archive=json.load(tf.extractfile('package/package.json'))
         assert archive['author']==pkg['author'] and archive['license']==pkg['license']
 print('PASS production packaging with synthetic SDK, author/license, UDS permissions, fonts and graphics')

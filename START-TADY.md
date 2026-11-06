@@ -1,4 +1,4 @@
-# LCI Budíky 0.3.0
+# LCI Budíky 0.3.1
 
 Vytvořeno Davidem My (330e).
 

@@ -4,7 +4,7 @@
 
 Vlastní česká aplikace pro iDrive 7 odvozená od G’s Dash. Tmavé rozhraní s červenými akcenty, vlastní G20 grafika, přepínání BC z aplikace i čtením fyzické páčky, nastavení a diagnostika.
 
-## První testovací vydání 0.3.0
+## První testovací vydání 0.3.1
 
 Určeno k prvnímu ověření **ve stojícím voze**. Zapnutí vyžaduje čerstvě přečtené **P z EGS**, rychlost pod **1 km/h**, **Sport Individual** a platné otáčky. Test trvá nejvýše **60 sekund**; při změně podmínek, opuštění aplikace, výpadku dat nebo chybě rendereru se vypne. Po restartu aplikace zůstává vypnuté.
 
