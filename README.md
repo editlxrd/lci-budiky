@@ -1,106 +1,45 @@
-# idrive7-apps
+# LCI Budíky
 
-Custom apps for BMW iDrive 7 head units. You install and update them from the car through
-robertn_store, which builds each app on the head unit from this repository.
+**Vytvořeno Davidem My (330e)**
 
-## Apps
+Vlastní česká aplikace pro iDrive 7 odvozená od G’s Dash. Tmavé rozhraní s červenými akcenty, vlastní G20 grafika, přepínání BC z aplikace i čtením fyzické páčky, nastavení a diagnostika.
 
-### G's Dash (`ng_gsdash`)
+## První testovací vydání 0.3.0
 
-A driver display and car hub for the centre screen.
+Určeno k prvnímu ověření **ve stojícím voze**. Zapnutí vyžaduje čerstvě přečtené **P z EGS**, rychlost pod **1 km/h**, **Sport Individual** a platné otáčky. Test trvá nejvýše **60 sekund**; při změně podmínek, opuštění aplikace, výpadku dat nebo chybě rendereru se vypne. Po restartu aplikace zůstává vypnuté.
 
-- **Nine looks:** M Style, GT, Digital '84, Sim Racing, Lumen, Pixel, Vector, Space (drifting
-  stars that sway with the g-force) and Aura (anime battle energy: an aura that powers up with the
-  revs), some with a choice of colours. Star your favourites and tap the gear on Drive to switch between them.
-- **Pages:** swipe between Drive (shift lights, gear, rpm, speed, g-meter, drive mode, oil and coolant
-  temperatures), Warm-up, G-force and Tires (tire pressures and temperatures).
-- **Units:** mph or km/h, °F or °C, psi, bar or kPa.
-- **Spotify panel:** optional, with its own sign-in by QR code.
-- **Logo:** the G mark by default, on the home-screen widget and in the instrument cluster. Send your own
-  GIF from your phone; it plays on the widget and in the cluster, including while the car is moving.
-  Per driving mode (Logo, off by default) gives Comfort, Sport, Sport+ and any other mode the car reports
-  its own GIF; an empty slot keeps the main Logo. Drive's right panel can show that same Logo instead of
-  the G-meter or Spotify. A built-in Stage 1 / 2 / 3 example is original art; use your own GIFs for anything else.
-- **On the car's other displays** (optional), two picks on Options > Cluster & HUD, one tap each, shared
-  with G's Music and G's TV:
-  - **The cluster's centre:** Auto, the G's Dash logo, G's Music, Waze's map or the car's own. Every
-    pick but Auto always shows what it says, also during route guidance; Auto shows the directions
-    during a route, then G's TV, G's Music or the logo.
-  - **Dials & HUD:** your look on the cluster dials, G's Dash's HUD, G's Music's lyrics on the HUD, or
-    the car's own. They share one display, so one of them at a time.
+Geometrie vychází z naměřených oblastí M/Sport KOMBI v G’s Dash. Tato upravená grafika ještě nebyla na cílovém 330e ověřena: před použitím za jízdy je nutné ověřit původní kontrolky, výstrahy, dojezdy a soužití mapy. Toto vydání běh za jízdy nepovoluje. Stránka časů zatím neprovádí jízdní měření v této parkovací relaci.
 
-  These need the Cluster renderer tool from the Store. A single switch in Options puts the cluster and
-  HUD back to stock.
-  The cluster dials are built only for the instrument cluster's M layout. If your car doesn't use
-  it, you can code it with BimmerCode.
-- **CarPlay map in the cluster** (optional, off by default): needs the Waze on cluster tool from the
-  Store and is untested on most firmware. To revert, turn it off and restart the head unit, or remove
-  the tool. The Waze and Stock picks switch its map on and off in the cluster, and its HUD map stays
-  off while one of G's apps has the HUD (Waze on cluster 0.9.0 or later).
+## Instalace přes MGU Store
 
-### G's Music (`ng_spotify`)
+1. Měj nainstalovaný **Cluster renderer (`cluster-render`, nejméně 0.2.2)** z `robertnisipeanu/idrive-apps`.
+2. V MGU Store otevři **Settings → Add source** a přidej `GITHUB_OWNER/lci-budiky`.
+3. Vyber zdroj z větve **main**, nainstaluj **LCI Budíky** a otevři jej v nabídce APPS.
+4. Ve stojícím autě v P a Sport Individual stiskni **Zapnout test (60 s)**. Stav aplikace musí potvrdit „Test běží“.
+5. Nejprve ověř původní kontrolky, dojezdy, malé ukazatele a mapu. Kdykoli použij **Vypnout test**. Pokud se cokoli překrývá, test vypni a zaznamenej obrazovku; další nastavení se v této verzi nekóduje.
 
-A full-screen Spotify player with synced lyrics or a visualizer.
+Store aplikaci sestaví na jednotce s jejím vlastním SDK. Do auta se neflashuje firmware ani nekóduje KOMBI. Původní G’s Dash má jiné ID a tato aplikace ho nepřepisuje.
 
-![G's Music playing a track with synced lyrics](docs/gsmusic-lyrics.png)
+## Rozhraní
 
-- Album art, large touch controls (previous, play/pause, next, shuffle, repeat, like) and a seek bar
-  you tap or drag.
-- Synced lyrics from [LRCLIB](https://lrclib.net), or a visualizer.
-- Sign in by scanning a QR code with your phone.
-- A home-screen widget showing what's playing.
-- While music plays, lyrics (scrolling as in the app) or the visualizer in the instrument cluster, and
-  the lyrics in the HUD when G's Dash's Dials & HUD pick is G's Music's lyrics (without G's Dash, its
-  own HUD setting, off by default), in a small, medium or large size. Both need the Cluster renderer
-  tool.
+- **Budíky** – zapnutí/vypnutí testu a náhradní tlačítko **Další hodnoty BC**.
+- **Nastavení** – zachování mapy, shift lights, bod přeřazení a profil Sport Individual.
+- **Diagnostika** – nástroje rendereru, widgety a zvuk, s českými popisky.
 
-Needs Spotify Premium. Setup guide: [docs/spotify.md](docs/spotify.md).
+Vlastní grafika používá čtyři efektové vrstvy a tři textury. Vyhrazené oblasti původních ukazatelů zůstávají průhledné. Střed je podmíněné okno BC/mapy; při zjištěné mapě či navádění zůstává průhledný a rychlost/zařazení jsou pod ním. Nativní vrstvy BMW nejsou tímto repozitářem emulované.
 
-### G's TV (`ng_tv`) - experimental
+## Vývoj a ověření
 
-Video on the centre screen while parked.
+`npm ci && npm test`
 
-- Channels from [Spelunkr](https://spelunkr.tv) (programmes on the Internet Archive) with a
-  two-hour guide and channel up / down.
-- Your own sources: direct links to MP4 (H.264) files, sent from your phone with a QR code or a
-  6-digit code.
-- Picks up where you left off.
-- Optional playback in the HUD or the cluster, also only while parked: in the cluster while G's Dash's
-  pick is Auto, in the HUD while its Dials & HUD pick is the car's own.
+Náhled iDrive: `node kit/tools/emu.js dv_lci_budiky --port 64558`, potom http://127.0.0.1:64558/. Jde o veřejný browserový emulátor App Kitu, nikoli plnou MGU firmware VM. Na Macu není připojené vozidlo; chybějící živé podklady jsou zobrazené jako neznámé a nezapnou test.
 
-The picture shows only in P, at a standstill. Video only, no sound yet.
+Kontrola skutečných shaderů: `node kit/tools/check_lci_webgl.js`, http://127.0.0.1:64559/. Používá pevná testovací data; není testem auta.
 
-## Requirements
+`kit/tools/build_lci.py` je sestavení pro jednotku se SDK. `build_emu.py` je oddělené hostitelské sestavení bez SDK; jeho výstupy nejsou instalační archiv.
 
-- A BMW with an iDrive 7 head unit and robertn_store installed.
-- **Internet** for G's Music, G's TV and G's Dash's Spotify panel: turn on the Store's uplink (phone
-  hotspot or Wi-Fi).
-- **Cluster and HUD features:** the Cluster renderer tool from the Store. The CarPlay map in the
-  cluster also needs the Waze on cluster tool.
+## Původ a licence
 
-## Install
+Základ: [G’s Dash od Nicka G](https://github.com/nickgcode/idrive7-apps), původní commit `0c0eec6b9bf8c40791f38ef1ccc9fafcb1982a33` (MIT). Původní zdroje a licence zůstaly zachované. Upravená aplikace je GPL-3.0-or-later; viz `apps/dv_lci_budiky/LICENSE` a `NOTICE`. App Kit (MIT), cluster-render (samostatný nástroj) a font Inter (SIL OFL) mají zachované kredity. Nejde o aplikaci BMW ani aplikaci podporovanou původními autory.
 
-1. On the car, open **robertn_store → Settings → Add source**.
-2. Enter `nickgcode/idrive7-apps` (or paste this repository's link) and save.
-3. The apps appear in the Store's list. Choose one and tap **Install**.
-
-Updates appear in the Store as well. To remove an app, uninstall it in the Store.
-
-Nothing here contains BMW's SDK. The Store supplies it when it builds an app on the head unit; a
-local build needs it in `oap-sdk/` (git-ignored). Never publish `dist/`, since builds contain the SDK.
-
-## Support
-
-Enjoying the apps? You can support development via [GitHub Sponsors](https://github.com/sponsors/nickgcode).
-
-## Disclaimer
-
-Unofficial. Not made, endorsed or supported by BMW or by the Store's author. Use at your own risk:
-you are responsible for your car and for how you use these apps. Don't let them distract you while
-driving.
-
-## License
-
-MIT, see [LICENSE](LICENSE). Bundled third-party code keeps its own licence:
-[kit/LICENSE.idrive7-apps](kit/LICENSE.idrive7-apps), [apps/ng_gsdash/LICENSE](apps/ng_gsdash/LICENSE),
-[apps/ng_spotify/LICENSE](apps/ng_spotify/LICENSE), [apps/ng_tv/LICENSE](apps/ng_tv/LICENSE).
+Repozitář neobsahuje BMW SDK, firmware, soukromé záznamy vozidla ani přihlašovací údaje. Sestavené OAP balíčky se SDK se nezveřejňují.

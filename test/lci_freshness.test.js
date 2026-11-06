@@ -1,0 +1,5 @@
+'use strict';
+const assert=require('assert'),{Vehicle}=require('../apps/dv_lci_budiky/cluster/lci_vehicle');
+(async()=>{const sig={watch:async(iface,inst,h)=>{if(h.statusCarSpeed2)h.statusCarSpeed2({speedVehicleCentreOfGravity:0});if(h.statusFESVehicleDynamicSwitchHMI)h.statusFESVehicleDynamicSwitchHMI({actualValueModeDrivingExperience:3});return{available:false,shutdown(){},proxy:{getValue:async f=>f==='statusCarSpeed2'?{speedVehicleCentreOfGravity:64}:f==='statusFESVehicleDynamicSwitchHMI'?{actualValueModeDrivingExperience:6}:{}}};}};
+const v=new Vehicle(sig,{warn(){}});await v.start();clearInterval(v.timer);assert.equal(v.data.get('speed',Date.now()),null,'unavailable-provider cache cannot claim fresh 0 km/h');assert.equal(v.data.get('mode',Date.now()),null);
+v.subs.forEach(r=>r.sub.available=true);v.pollGetters(v.seq);await new Promise(r=>setImmediate(r));assert.equal(v.data.get('speed',Date.now()),1);assert.equal(v.data.get('mode',Date.now()),6);v.stop();console.log('PASS cached unavailable values rejected; critical data comes from fresh getters');})();

@@ -1,0 +1,10 @@
+'use strict';
+const assert=require('assert'),{Vehicle}=require('../apps/dv_lci_budiky/cluster/lci_vehicle');
+const immediate=()=>new Promise(r=>setImmediate(r));
+(async()=>{const callbacks=[];const sig={watch:async()=>({available:false,shutdown(){}}),proxy:async()=>({shutdown(){}}),on:async(p,n,fn)=>callbacks.push(fn),call:async()=>({TasuErrorEnum:0})};
+const v=new Vehicle(sig,{warn(){}});await v.start();clearInterval(v.timer);const p1=v.readDid(0x18,0xDA2E,v.seq);await immediate();const old=callbacks[0];v.stop();assert.equal(await p1,null);
+await v.start();clearInterval(v.timer);let resolved=false;const p2=v.readDid(0x18,0xDA2E,v.seq).then(x=>{resolved=true;return x;});await immediate();
+const raw=[0,0,0,0,0,0,0x18,0,0,0x62,0xda,0x2e,0,0];old({errorCode:0,udsResponse:raw});await immediate();assert(!resolved,'old subscription must not resolve a new P request');
+callbacks[1]({errorCode:'APP_REQUEST_TEMPORARILY_NOT_ACCEPTED',udsResponse:raw});assert.equal(await p2,null,'transport error must fail the read');
+const p3=v.readDid(0x18,0xDA2E,v.seq);await immediate();const rejected=raw.slice();rejected[2]=0x7f;callbacks[1]({errorCode:0,udsResponse:rejected});assert.equal(await p3,null,'rejected header must fail the read');v.stop();
+console.log('PASS old callback isolation, TASU errorCode and rejection header');})();

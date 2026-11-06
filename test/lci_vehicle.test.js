@@ -1,0 +1,11 @@
+'use strict';
+const assert=require('assert'),{decodeDid,Data,BC,isSportIndividual}=require('../apps/dv_lci_budiky/cluster/lci_vehicle');
+assert.deepEqual(decodeDid(0x18,0xDA2E,[0x62,0xDA,0x2E,0,0]),{gear:'P'});
+assert.equal(decodeDid(0x18,0xDA2E,[0x62,0xDA,0x2E,2,0]).gear,null);
+assert.deepEqual(decodeDid(0x60,0xD10E,[0x62,0xD1,0x0E,64]),{bc:64});
+assert.deepEqual(decodeDid(0x60,0xD10E,[0x62,0xD1,0x0F,64]),{});
+const d=new Data();d.put('speed',0,100);assert.equal(d.get('speed',1599),0);assert.equal(d.get('speed',1601),null);assert.equal(d.get('speed',99),null);
+d.put('rpm',9000,100);assert.equal(d.get('rpm',101),null);
+const b=new BC();assert(!b.feed(64));assert(!b.feed(0));assert(b.feed(64));assert(!b.feed(64));assert(!b.feed(null));assert(!b.feed(64));
+assert(isSportIndividual(3));assert(isSportIndividual('SPORT_INDIVIDUAL'));assert(!isSportIndividual('INDIVIDUAL'));assert(!isSportIndividual(6));
+console.log('PASS read decoding, authoritative P, freshness, BC edges and exact Sport Individual');

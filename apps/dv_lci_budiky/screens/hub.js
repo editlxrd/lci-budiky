@@ -1,0 +1,447 @@
+'use strict';
+/**
+ * hub.js - LCI Budíky's screens besides Drive (the look's own dash, main.js): Warm-up,
+ * G-force and Tires, switched by a horizontal swipe (main.js), page dots beside the G button. Each
+ * screen draws with the current look's palette, fonts and plates, so a look carries across.
+ * Car data only: a value the car hasn't sent shows "--", never a made-up one.
+ * Node 8: no ?., no ??, no object spread.
+ */
+const L = require('./lib');
+const G = require('./kit/gauges');
+const U = require('./units');
+const { withAlpha, isNum } = L;
+
+// left to right as the swipe goes; the app opens on HOME (Drive), the first screen
+// (0.17.0's Cluster & HUD screen became Options > Cluster & HUD itself, 0.17.1: pickRows())
+const SCREENS = [['drive', 'Drive'], ['warmup', 'Warm-up'], ['gforce', 'G-force'], ['tires', 'Tires']];
+const HOME = 'drive';
+const GREEN = '#2fd27a';
+
+/* ---------- look adapter ---------- */
+function style(lk, t0) {
+    const u = lk.ui, t = Object.assign({ cold: '#5aa9ff', warn: '#ffb020', crit: '#ff3b30', track: withAlpha('#ffffff', 0.12) }, t0);
+    const up = (s) => (u.upper ? String(s).toUpperCase() : String(s));
+    return {
+        t, u, up,
+        txt: (cv, s, x, y, size, c, o) => cv.text(up(s), x, y, size, c, Object.assign({ font: u.lbl || u.txt, spacing: u.upper ? u.spacing : 0, literal: true }, o || {})),
+        txtW: (cv, s, size, o) => cv.textWidth(up(s), size, Object.assign({ font: u.lbl || u.txt, spacing: u.upper ? u.spacing : 0, literal: true }, o || {})),
+        // a look may draw its own numbers (Pixel: big ones as rects): ui.numText / ui.numWidth
+        num: (cv, s, x, y, size, c, o) => (u.numText ? u.numText(cv, String(s), x, y, size, c, o) : cv.text(String(s), x, y, size, c, Object.assign({ font: u.num, literal: true }, o || {}))),
+        numW: (cv, s, size) => (u.numWidth ? u.numWidth(cv, String(s), size) : cv.textWidth(String(s), size, { font: u.num, literal: true })),
+        plate: (cv, x, y, w, h, accent) => {
+            if (lk.panelPlate) { lk.panelPlate(cv, t, x, y, w, h); return; }
+            cv.roundRect(x, y, w, h, u.radius, withAlpha('#ffffff', 0.035));
+            cv.strokeRoundRect(x, y, w, h, u.radius, 1, withAlpha('#ffffff', 0.10));
+            if (accent) cv.roundRect(x + 14, y, 46, 3, 1.5, accent);
+        },
+        r: u.radius,
+    };
+}
+
+/* ---------- small parts ---------- */
+function pill(cv, st, x, y, text, c, o) {
+    o = o || {};
+    const size = o.size || 18, tw = st.txtW(cv, text, size), h = o.h || 34, dot = o.dot !== false;
+    const w = tw + (dot ? 46 : 28) + (o.extraW || 0);
+    const X = o.align === 'right' ? x - w : o.align === 'center' ? x - w / 2 : x;
+    cv.roundRect(X, y, w, h, Math.min(h / 2, st.r + 6), withAlpha(c, o.fill || 0.16));
+    if (o.ring) cv.strokeRoundRect(X, y, w, h, Math.min(h / 2, st.r + 6), 1.5, withAlpha(c, 0.7));
+    if (dot) cv.circle(X + 19, y + h / 2, 6, c);
+    st.txt(cv, text, X + (dot ? 34 : 14), y + h / 2 + size * 0.36, size, o.textColor || c);
+    return { x: X, w };
+}
+function title(cv, st, S, name, sub) {
+    st.txt(cv, name, S.x + 8, S.y + 30, 24, st.t.text);
+    if (sub) st.txt(cv, sub, S.x + 8 + st.txtW(cv, name, 24) + 18, S.y + 30, 16, st.t.dim);
+}
+
+/** Page dots: a compact pill left of the G button, the current one a lit bar. Returns its rect. */
+const dotsW = (n) => 22 + (n - 1) * 24 + 30 + 2;
+/** The G button with the page dots left of it: what a panel beside them keeps clear of. */
+const dotsBox = (gr, n) => ({ x: gr.x - 18 - dotsW(n), y: gr.y, w: gr.w + 18 + dotsW(n), h: gr.h });
+function dots(cv, st, gr, idx, n, above) {
+    const d = 10, gap = 14, cur = 30, w = dotsW(n), h = 30;
+    // left of the G; above it (right aligned) where the look has its own readouts there
+    const x = above ? gr.x + gr.w - w : gr.x - 18 - w, y = above ? gr.y - h - 10 : gr.y + (gr.h - h) / 2;
+    cv.roundRect(x, y, w, h, h / 2, withAlpha('#000000', 0.35));
+    cv.strokeRoundRect(x, y, w, h, h / 2, 1, withAlpha('#ffffff', 0.10));
+    let px = x + 11;
+    for (let i = 0; i < n; i++) {
+        const on = i === idx, ww = on ? cur : d;
+        cv.roundRect(px, y + h / 2 - d / 2, ww, d, d / 2, on ? (st.t.sel || st.t.accent) : withAlpha(st.t.text, 0.28));
+        px += ww + gap;
+    }
+    return { x, y, w, h };
+}
+
+/** A short-lived label when the screen changes (or the auto-jump fires). */
+function toast(cv, st, S, text, age, sub, at) {
+    if (age > 2600) return;
+    const a = age < 2200 ? 1 : 1 - (age - 2200) / 400;
+    cv.alpha(a);
+    const size = 16, tw = st.txtW(cv, text, size), sw = sub ? st.txtW(cv, sub, 14) : 0, w = tw + (sub ? sw + 24 : 0) + 56, h = 30;
+    const x = (at ? at.cx : 800) - w / 2, y = at ? at.y : S.y + 2;
+    cv.roundRect(x, y, w, h, h / 2, withAlpha('#000000', 0.72));
+    cv.strokeRoundRect(x, y, w, h, h / 2, 1.5, withAlpha(GREEN, 0.75));
+    cv.circle(x + 18, y + h / 2, 6, GREEN);
+    st.txt(cv, text, x + 32, y + 21, size, GREEN);
+    if (sub) st.txt(cv, sub, x + 32 + tw + 20, y + 20, 14, st.t.dim);
+    cv.alpha(1);
+}
+
+/* ---------- Cluster & HUD picks (0.17.0; 0.17.1: Options > Cluster & HUD) ---------- */
+/** s cut to width w at size ('...' at the end), in the look's label font */
+function fitTxt(cv, st, s, size, w) {
+    let txt = String(s);
+    if (st.txtW(cv, txt, size) <= w) return txt;
+    while (txt.length > 1 && st.txtW(cv, txt + '...', size) > w) txt = txt.slice(0, -1);
+    return txt.replace(/\s+$/, '') + '...';
+}
+function quickTile(cv, st, x, y, w, h, o) {
+    const t = st.t, acc = t.sel || t.accent;
+    if (o.sel) { cv.roundRect(x, y, w, h, st.r, withAlpha(acc, 0.24)); cv.strokeRoundRect(x, y, w, h, st.r, 3, acc); }
+    else {
+        st.plate(cv, x, y, w, h, null);
+        if (o.down) cv.roundRect(x, y, w, h, st.r, withAlpha(acc, 0.16));
+    }
+    const dim = !o.enabled;
+    // the radio mark, then the name and what it does now (amber: why it cannot show now)
+    cv.arc(x + 28, y + 32, 10, 12, 0, 360, o.sel ? acc : withAlpha(t.dim, dim ? 0.5 : 1));
+    if (o.sel) cv.circle(x + 28, y + 32, 5.5, acc);
+    const fit = (s, size, ww) => fitTxt(cv, st, s, size, ww);
+    st.txt(cv, fit(o.name, 24, w - 64), x + 50, y + 41, 24, dim ? withAlpha(t.dim, 0.6) : o.sel ? t.text : withAlpha(t.text, 0.85));
+    const line = o.ok === false ? o.why : o.line;
+    if (line) {
+        // two lines at most (one when the tile is short), the last cut with '...'
+        const max = h >= 100 ? 2 : 1, words = String(line).split(' '), lines = [''];
+        words.forEach((wd) => {
+            const cur = lines[lines.length - 1], next = cur ? cur + ' ' + wd : wd;
+            if (st.txtW(cv, next, 15) <= w - 32 || !cur) lines[lines.length - 1] = next;
+            else if (lines.length < max) lines.push(wd);
+            else lines[lines.length - 1] = cur + ' ' + wd;
+        });
+        lines.forEach((l, i) => st.txt(cv, fit(l, 15, w - 32), x + 16, y + h - 14 - (lines.length - 1 - i) * 21, 15, o.ok === false ? t.warn : withAlpha(t.dim, dim ? 0.6 : 1)));
+    }
+    if (dim) cv.roundRect(x, y, w, h, st.r, withAlpha('#000000', 0.45));     // LCI Budíky off: nothing to pick
+}
+/**
+ * Options > Cluster & HUD's parts for the page's room (top: the page area's top under its header, bottom: its foot;
+ * 388 px between them on the car's usual 520 px page): the two rows of picks, then the foot row (what shows now,
+ * Waze on cluster's switch, Diagnostics), the rows sharing what more there is. { yA, hA, yB, hB, yC, hC }.
+ */
+function pickLayout(top, bottom) {
+    const room = Math.max(0, bottom - top - 388);
+    const hA = Math.min(150, 120 + Math.round(room * 0.4)), hB = Math.min(130, 110 + Math.round(room * 0.4));
+    const yA = top + 30, yB = yA + hA + 38, yC = yB + hB + 14;
+    return { yA, hA, yB, hB, yC, hC: Math.min(120, bottom - yC) };
+}
+/**
+ * The two rows of picks: the cluster's centre (Auto, Logo, Music, Waze, Stock) and the dials & HUD (Cluster dials,
+ * LCI Budíky HUD, G's Music lyrics, Car's own), one tap each. Each tile says what it does, or in amber why it cannot
+ * show now. M (main.js quickModel): { on, src, srcTiles: [{ id, name, line, ok, why }], disp, dispTiles: [{ id,
+ * name, line }], tap(key, fn), down(key), pickSrc(id), pickDisp(id) }. With LCI Budíky off on the cluster & HUD the
+ * picks are dimmed and take no tap (the page's switch does).
+ */
+function pickRows(cv, st, S, M, Q) {
+    const t = st.t, X = S.x, W = S.w, gap = 14;
+    const row = (label, y, h, tiles, cur, key, pick) => {
+        st.txt(cv, label, X, y - 12, 18, t.dim);
+        const n = tiles.length, w = (W - (n - 1) * gap) / n;
+        tiles.forEach((tl, i) => {
+            const x = X + i * (w + gap), k = key + ':' + tl.id, sel = M.on && cur === tl.id;
+            quickTile(cv, st, x, y, w, h, { name: tl.name, line: tl.line, why: tl.why, ok: tl.ok, sel, enabled: M.on, down: M.down(k) });
+            if (S.own && M.on && !sel) cv.target(x, y, w, h, () => M.tap(k, () => pick(tl.id)), k, st.r);
+        });
+    };
+    row("In the cluster's centre (map area)", Q.yA, Q.hA, M.srcTiles, M.src, 'qs', M.pickSrc);
+    row('Dials & HUD (one at a time: they share one display)', Q.yB, Q.hB, M.dispTiles, M.disp, 'qd', M.pickDisp);
+}
+
+/**
+ * Options > Cluster & HUD's foot (Q.yC, Q.hC): what the cluster and the HUD show now (with the first reason something
+ * is not as picked, amber, when there is room), CarPlay's map in the cluster Off / On when Waze on cluster is
+ * installed, and Diagnostics. F (main.js): { now: { text, tone }, hud: { text, tone }, warn, waze: null | { value, on,
+ * can ('apply' | 'revert' | ''), tone ('ok' | 'wait' | 'bad' | '') }, down(key), ask(cmd), diag() }.
+ */
+function pickFoot(cv, st, S, Q, F) {
+    const t = st.t, u = st.u, acc = t.sel || t.accent, gap = 14, fy = Q.yC, fh = Q.hC, X = S.x;
+    const diagW = 250, wazeW = F.waze ? 470 : 0, nw = S.w - diagW - gap - (F.waze ? wazeW + gap : 0);
+    const tone = (k) => (k === 'ok' ? GREEN : k === 'wait' ? t.warn : k === 'bad' ? t.crit : withAlpha(t.dim, 0.9));
+    st.plate(cv, X, fy, nw, fh, null);
+    const lines = [[tone(F.now.tone), 'Centre: ' + F.now.text, 18, t.text], [tone(F.hud.tone), 'Dials & HUD: ' + F.hud.text, 17, withAlpha(t.text, 0.85)]];
+    if (F.warn && fh >= 96) lines.push([null, F.warn, 15, t.warn]);
+    const lh = fh / lines.length;
+    lines.forEach((ln, i) => {
+        const y = fy + lh * i + lh / 2;
+        if (ln[0]) cv.circle(X + 22, y, 7, ln[0]);
+        st.txt(cv, fitTxt(cv, st, ln[1], ln[2], nw - 56), X + 40, y + ln[2] * 0.36, ln[2], ln[3]);
+    });
+    if (F.waze) {
+        const W = F.waze, wx = X + nw + gap, dot = W.tone ? tone(W.tone) : null;
+        st.plate(cv, wx, fy, wazeW, fh, null);
+        const bw = 92, bh = Math.min(56, fh - 20), bx0 = wx + wazeW - 2 * bw - 22, tw = bx0 - wx - 28;
+        st.txt(cv, fitTxt(cv, st, 'Waze on cluster', 15, tw), wx + 16, fy + fh / 2 - 8, 15, t.dim);
+        if (dot) cv.circle(wx + 22, fy + fh / 2 + 16, 6, dot);
+        st.txt(cv, fitTxt(cv, st, W.value, 17, tw - (dot ? 18 : 0)), wx + 16 + (dot ? 18 : 0), fy + fh / 2 + 22, 17, t.text);
+        [[false, 'Off', 'revert'], [true, 'On', 'apply']].forEach((b, i) => {
+            const bx = bx0 + i * (bw + 6), on = W.on === b[0], tap = W.can === b[2], by = fy + (fh - bh) / 2, k = 'cm:' + b[1].toLowerCase();
+            if (on) { cv.roundRect(bx, by, bw, bh, st.r, withAlpha(acc, 0.22)); cv.strokeRoundRect(bx, by, bw, bh, st.r, 2, acc); }
+            else cv.roundRect(bx, by, bw, bh, st.r, withAlpha('#ffffff', 0.06));
+            st.txt(cv, b[1], bx + bw / 2, by + bh / 2 + 8, 22, on || tap ? t.text : withAlpha(t.dim, 0.55), { font: u.txt, align: 'center' });
+            if (tap && S.own) cv.target(bx, by, bw, bh, () => F.ask(b[2]), k, st.r);
+        });
+    }
+    // Diagnostics: a card with a chevron
+    const dx = X + S.w - diagW;
+    st.plate(cv, dx, fy, diagW, fh, null);
+    if (F.down('cs:diag')) cv.roundRect(dx, fy, diagW, fh, st.r, withAlpha(acc, 0.16));
+    st.txt(cv, 'Diagnostics', dx + 20, fy + fh / 2 + 7, u.size, t.text);
+    const cx = dx + diagW - 26, cy = fy + fh / 2;
+    cv.line(cx - 4.5, cy - 9, cx + 4.5, cy, 2.5, t.dim); cv.line(cx + 4.5, cy, cx - 4.5, cy + 9, 2.5, t.dim);
+    if (S.own) cv.target(dx, fy, diagW, fh, F.diag, 'cs:diag', st.r);
+}
+
+/* ---------- warm-up ---------- */
+/** Temperature arc (270 deg): ramp cold blue -> warm white -> ready green, the ready mark. */
+function tempArc(cv, st, cx, cy, r, g) {
+    const t = st.t, th = 24, A0 = -135, SPAN = 270, v = g.value;
+    const f = (x) => Math.max(0, Math.min(1, (x - g.min) / (g.max - g.min)));
+    cv.arc(cx, cy, r - th, r, A0, A0 + SPAN, t.track, { round: true });
+    const ready = isNum(v) && v >= g.ready;
+    if (isNum(v)) {
+        const a1 = A0 + SPAN * Math.max(0.01, f(v));
+        if (ready) cv.arc(cx, cy, r - th - 6, r + 6, A0, a1, withAlpha(GREEN, 0.18), { round: true });
+        cv.arc(cx, cy, r - th, r, A0, a1, ready ? GREEN : t.cold, ready ? { round: true } : { round: true, ramp: [t.cold, t.cold, '#e8f1ff', '#ffd27a'], rampFrom: A0, rampTo: A0 + SPAN * f(g.ready) });
+    }
+    // the ready mark: a tick across the track and its temperature outside
+    const am = (A0 + SPAN * f(g.ready)) * Math.PI / 180, sx = Math.sin(am), sy = -Math.cos(am);
+    cv.line(cx + sx * (r - th - 8), cy + sy * (r - th - 8), cx + sx * (r + 10), cy + sy * (r + 10), 4, ready ? GREEN : t.text);
+    const tu = g.tu || 'f';   // the arc and its zones stay in °F; what is printed: the Units page's unit (0.13.6)
+    st.num(cv, String(U.tempNum(g.ready, tu)), cx + sx * (r + 34), cy + sy * (r + 34) + 8, 20, t.dim, { align: sx > 0.2 ? 'left' : sx < -0.2 ? 'right' : 'center' });
+    // centre: the temperature, label, state
+    const big = Math.round(r * 0.62), s = isNum(v) ? String(U.tempNum(v, tu)) : '--', w = st.numW(cv, s, big);
+    st.num(cv, s, cx - 12, cy + big * 0.30, big, isNum(v) ? t.text : t.dim, { align: 'center' });
+    st.num(cv, U.tempUnit(tu), cx - 12 + w / 2 + 6, cy + big * 0.30 - big * 0.42, 26, t.dim);
+    st.txt(cv, g.label, cx, cy - big * 0.52, 20, t.dim, { align: 'center' });
+    const stt = ready ? 'Ready' : g.eta;
+    if (stt) st.txt(cv, stt, cx, cy + r * 0.62, 18, ready ? GREEN : isNum(v) ? t.warn : t.dim, { align: 'center' });
+    st.txt(cv, g.foot, cx, cy + r + 24, 16, t.dim, { align: 'center' });
+}
+
+/** The temporary rev limit: a segmented tach, lit up to the limit, the rest locked (hatched). */
+function revLimit(cv, st, x, y, w, M, S) {
+    const t = st.t, max = S.maxRpm, red = S.redline, has = isNum(M.limit), lim = has ? M.limit : 0, full = has && lim >= red;
+    st.txt(cv, full ? 'Rev limit' : 'Warm-up rev limit', x, y + 18, 18, t.dim);
+    const big = 132, s = has ? String(lim) : '--', bw = st.numW(cv, s, big);
+    st.num(cv, s, x - 4, y + 34 + big * 0.74, big, full ? GREEN : has ? t.text : t.dim);
+    st.txt(cv, 'rpm', x + bw + 10, y + 34 + big * 0.74, 22, t.dim);
+    if (!has) pill(cv, st, x + w, y, 'No oil temp', t.dim, { align: 'right', size: 16, h: 30 });
+    else if (!full) pill(cv, st, x + w, y, 'Rising', t.warn, { align: 'right', size: 16, h: 30 });
+    else pill(cv, st, x + w, y, 'Full revs', GREEN, { align: 'right', size: 16, h: 30 });
+    // the bar
+    const by = y + 196, bh = 46, step = 250, n = max / step, gap = 3, sw = (w - gap * (n - 1)) / n;
+    for (let i = 0; i < n; i++) {
+        const r0 = i * step, sx = x + i * (sw + gap);
+        if (r0 < lim) {
+            const c = r0 >= red ? t.crit : full ? GREEN : r0 >= lim - 750 ? t.warn : t.text;
+            cv.fillRect(sx, by, sw, bh, c);
+        } else if (r0 < red) {
+            cv.fillRect(sx, by, sw, bh, withAlpha('#ffffff', 0.06));
+            cv.line(sx, by + bh, sx + sw, by, 1.5, withAlpha('#ffffff', 0.13));
+        } else cv.fillRect(sx, by, sw, bh, withAlpha(t.crit, 0.22));
+    }
+    // limit marker and redline post
+    const lx = x + (lim / max) * w - gap / 2;
+    if (has && !full) {
+        cv.fillRect(lx - 2, by - 14, 4, bh + 28, t.warn);
+        cv.quad([[lx - 9, by - 24], [lx + 9, by - 24], [lx, by - 12], [lx, by - 12]], t.warn);
+    }
+    const rx = x + (red / max) * w - gap / 2;
+    cv.fillRect(rx - 1.5, by - 6, 3, bh + 12, t.crit);
+    for (let k = 0; k <= max / 1000; k++) st.num(cv, String(k), x + (k * 1000 / max) * w, by + bh + 28, 20, k * 1000 >= red ? t.crit : t.dim, { align: k === 0 ? 'left' : k * 1000 === max ? 'right' : 'center' });
+    st.txt(cv, full ? 'Oil warm: the whole rev range is yours' : has ? 'Rises with oil temperature to ' + red + ' rpm at ' + U.tempText(M.fullAt, M.tu)
+        : 'Waiting for the oil temperature', x, by + bh + 64, 17, t.dim);
+}
+
+function warmup(cv, st, S, M) {
+    const t = st.t, ready = M.ready, known = isNum(M.oil) || isNum(M.cool);
+    title(cv, st, S, 'Warm-up', M.oil === null && M.cool === null ? 'No engine temperatures yet' : '');
+    // status, top right of the rev area
+    if (ready) {
+        const pulse = 0.5 + 0.5 * Math.sin(S.now / 380);
+        cv.roundRect(1110, S.y + 4, 478, 64, st.r + 6, withAlpha(GREEN, 0.14 + 0.08 * pulse));
+        cv.strokeRoundRect(1110, S.y + 4, 478, 64, st.r + 6, 2, GREEN);
+        st.txt(cv, 'Ready', 1349, S.y + 50, 40, GREEN, { align: 'center', spacing: 8 });
+    } else {
+        const c = known ? t.warn : t.dim;
+        cv.roundRect(1110, S.y + 4, 478, 64, st.r + 6, withAlpha(c, 0.10));
+        cv.strokeRoundRect(1110, S.y + 4, 478, 64, st.r + 6, 1.5, withAlpha(c, 0.6));
+        st.txt(cv, known ? 'Warming up' : 'No data', 1349, S.y + 46, 30, c, { align: 'center', spacing: 5 });
+    }
+    const cy = S.y + 262;
+    tempArc(cv, st, 252, cy, 172, { value: M.oil, min: 40, max: 240, ready: M.oilReady, label: 'Oil', eta: M.oilEta, foot: 'Oil ready at ' + U.tempText(M.oilReady, M.tu), tu: M.tu });
+    tempArc(cv, st, 662, cy, 172, { value: M.cool, min: 40, max: 240, ready: M.coolReady, label: 'Coolant', eta: M.coolEta, foot: 'Coolant ready at ' + U.tempText(M.coolReady, M.tu), tu: M.tu });
+    st.plate(cv, 900, S.y + 92, 688, 340, ready ? GREEN : known ? t.warn : null);
+    revLimit(cv, st, 930, S.y + 116, 628, M, S);
+    // the auto-jump, bottom left
+    const by = S.y + S.h - 40;
+    if (M.auto && !ready) {
+        const p = pill(cv, st, S.x + 4, by, 'Auto: Drive opens when warm', t.dim, { size: 16, h: 34, fill: 0.10 });
+        st.txt(cv, 'Swipe to leave any time', p.x + p.w + 16, by + 23, 15, withAlpha(t.dim, 0.8));
+    } else if (M.auto && ready) {
+        const p = pill(cv, st, S.x + 4, by, 'Opening Drive in ' + M.countdown + ' s', GREEN, { size: 16, h: 34, ring: true });
+        const f = 1 - M.countdown / 5;
+        cv.roundRect(p.x + 14, by + 31, (p.w - 28) * f, 3, 1.5, GREEN);
+        st.txt(cv, 'Swipe to stay here', p.x + p.w + 16, by + 23, 15, withAlpha(t.dim, 0.8));
+    }
+}
+
+/* ---------- g-force ---------- */
+/** G-force: the g-meter and peaks; the right panel is always the live g readouts (0.11.1: never Spotify, whatever Drive's right panel is). */
+function gforce(cv, st, S, M) {
+    const t = st.t, cx = 352, cy = S.y + 268, r = 206, max = S.gMax;
+    title(cv, st, S, 'G-force', 'Peak hold this session · hold to reset');
+    G.gmeter(cv, t, cx, cy, r, { lat: M.lat, long: M.long, max, trail: M.trail });
+    // peak hold: the furthest the dot went in each direction, as a filled outline
+    const P = (lat, lon) => [cx + Math.max(-1.1, Math.min(1.1, lat / max)) * r, cy - Math.max(-1.1, Math.min(1.1, lon / max)) * r];
+    const env = M.envelope, n = env.length, pts = [];
+    for (let i = 0; i < n; i++) { const a = i / n * 2 * Math.PI; pts.push(P(Math.sin(a) * env[i], Math.cos(a) * env[i])); }
+    const hc = t.accent2 || t.accent, any = env.some((e) => e > 0.02);
+    if (any) {
+        for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; cv.quad([[cx, cy], a, b, [cx, cy]], withAlpha(hc, 0.10)); }
+        cv.polyline(pts.concat([pts[0]]), 3, withAlpha(hc, 0.9));
+        // the four peaks as markers on the outline
+        [[0, M.peak.acc], [Math.PI, M.peak.brk], [-Math.PI / 2, M.peak.left], [Math.PI / 2, M.peak.right]].forEach((p) => {
+            if (!(p[1] > 0.02)) return;
+            const q = P(Math.sin(p[0]) * p[1], Math.cos(p[0]) * p[1]);
+            cv.circle(q[0], q[1], 7, t.bg); cv.circle(q[0], q[1], 5, hc);
+        });
+    }
+    // peak tiles
+    const tx = 640, tw = 300, th = 98, tg = 14;
+    [['Accel', M.peak.acc, ''], ['Brake', M.peak.brk, ''], ['Left', M.peak.left, ''], ['Right', M.peak.right, '']].forEach((p, i) => {
+        const y = S.y + 54 + i * (th + tg);
+        st.plate(cv, tx, y, tw, th);
+        st.txt(cv, p[0], tx + 18, y + 30, 17, t.dim);
+        st.txt(cv, 'Peak', tx + tw - 18, y + 30, 14, withAlpha(t.dim, 0.7), { align: 'right' });
+        const has = isNum(p[1]) && M.live, v = has ? p[1].toFixed(2) : '--';
+        st.num(cv, v, tx + 18, y + 84, 50, has ? hc : t.dim);
+        st.txt(cv, 'g', tx + 18 + st.numW(cv, v, 50) + 8, y + 84, 22, t.dim);
+        const bw = tw - 36, f = has ? Math.min(1, p[1] / max) : 0;
+        cv.roundRect(tx + 18, y + th - 9, bw, 4, 2, t.track);
+        cv.roundRect(tx + 18, y + th - 9, Math.max(4, bw * f), 4, 2, hc);
+    });
+    st.txt(cv, 'Session ' + M.session, tx, S.y + S.h - 14, 15, t.dim);
+    // right: always the live readouts (0.11.1: the Drive page's right-panel setting does not apply here)
+    const rx = 980, rw = S.x + S.w - rx;
+    const ph = S.h - 54 - 92;
+    st.plate(cv, rx, S.y + 54, rw, ph);
+    st.txt(cv, 'Now', rx + 24, S.y + 90, 18, t.dim);
+    const now = isNum(M.lat) && isNum(M.long), tot = now ? Math.sqrt(M.lat * M.lat + M.long * M.long).toFixed(2) : '--';
+    st.num(cv, tot, rx + 24, S.y + 220, 120, now ? t.text : t.dim);
+    st.txt(cv, 'g', rx + 24 + st.numW(cv, tot, 120) + 10, S.y + 220, 30, t.dim);
+    // lat / long centre-origin bars
+    [['Lateral', M.lat], ['Longitudinal', M.long]].forEach((p, i) => {
+        const y = S.y + 262 + i * 46, bx = rx + 190, bw = rw - 214;
+        st.txt(cv, p[0], rx + 24, y + 8, 15, t.dim);
+        cv.roundRect(bx, y - 6, bw, 14, 7, t.track);
+        const mid = bx + bw / 2, f = isNum(p[1]) ? Math.max(-1, Math.min(1, p[1] / max)) * bw / 2 : 0;
+        if (Math.abs(f) > 0.5) cv.roundRect(Math.min(mid, mid + f), y - 6, Math.abs(f), 14, 7, hc);
+        cv.fillRect(mid - 1, y - 12, 2, 26, t.text);
+        st.num(cv, isNum(p[1]) ? (p[1] >= 0 ? '+' : '') + p[1].toFixed(2) : '--', bx + bw, y - 14, 18, t.dim, { align: 'right' });
+    });
+    // the last 20 s of combined g, inside the plate's foot
+    const cy2 = S.y + 360, ch = S.y + 54 + ph - 16 - cy2, cw2 = rw - 48;
+    cv.fillRect(rx + 24, cy2 - 14, cw2, 1, withAlpha('#ffffff', 0.10));
+    st.txt(cv, 'Last 20 s', rx + 24, cy2 + 10, 15, t.dim);
+    // newest at the right; a gap in the data (null) breaks the line
+    const H = M.history, nh = H.length, runs = [];
+    let run = [];
+    H.forEach((v, i) => {
+        if (!isNum(v)) { if (run.length) runs.push(run); run = []; return; }
+        run.push([rx + 24 + i * (cw2 - 40) / Math.max(1, nh - 1), cy2 + ch - Math.min(1, v / max) * (ch - 20)]);
+    });
+    if (run.length) runs.push(run);
+    runs.forEach((r2) => { if (r2.length > 1) { cv.fillUnder(r2, cy2 + ch, withAlpha(hc, 0.12)); cv.polyline(r2, 2.5, hc); } });
+    if (!runs.length) st.txt(cv, 'No acceleration data yet', rx + 24 + (cw2 - 40) / 2, cy2 + ch / 2 + 14, 16, t.dim, { align: 'center' });
+}
+
+/* ---------- tires ---------- */
+const TEMP = { cold: 80, hot: 150 };          // TPMS air temperature, deg F (assumption, configurable)
+function tempState(f) { return !isNum(f) ? null : f < TEMP.cold ? 'cold' : f > TEMP.hot ? 'hot' : 'ok'; }
+function pressState(p, tgt) { return !isNum(p) || !isNum(tgt) ? null : p < tgt - 2 ? 'low' : p > tgt + 4 ? 'high' : 'ok'; }
+
+function carOutline(cv, st, cx, top, bw, bh) {
+    const t = st.t, x = cx - bw / 2, line = withAlpha(t.text, 0.55), faint = withAlpha(t.text, 0.16);
+    // body: a long rounded hull, slightly narrower at the nose and tail
+    cv.roundRect(x, top, bw, bh, bw * 0.34, withAlpha('#ffffff', 0.025));
+    cv.strokeRoundRect(x, top, bw, bh, bw * 0.34, 2.5, line);
+    // windscreen, roof, rear window
+    const gx = x + 26, gw = bw - 52;
+    cv.quad([[gx + 10, top + bh * 0.30], [gx + gw - 10, top + bh * 0.30], [gx + gw, top + bh * 0.40], [gx, top + bh * 0.40]], withAlpha(t.accent2 || t.accent, 0.20));
+    cv.roundRect(gx + 4, top + bh * 0.42, gw - 8, bh * 0.26, 18, withAlpha('#ffffff', 0.05));
+    cv.strokeRoundRect(gx + 4, top + bh * 0.42, gw - 8, bh * 0.26, 18, 1.5, faint);
+    cv.quad([[gx, top + bh * 0.70], [gx + gw, top + bh * 0.70], [gx + gw - 14, top + bh * 0.78], [gx + 14, top + bh * 0.78]], withAlpha(t.accent2 || t.accent, 0.14));
+    // bonnet lines, mirrors, lights
+    cv.line(cx - bw * 0.18, top + 26, cx - bw * 0.14, top + bh * 0.27, 1.5, faint);
+    cv.line(cx + bw * 0.18, top + 26, cx + bw * 0.14, top + bh * 0.27, 1.5, faint);
+    cv.roundRect(x - 16, top + bh * 0.34, 18, 12, 5, line);
+    cv.roundRect(x + bw - 2, top + bh * 0.34, 18, 12, 5, line);
+    cv.roundRect(x + 22, top + 8, 40, 7, 3.5, withAlpha('#ffffff', 0.7));
+    cv.roundRect(x + bw - 62, top + 8, 40, 7, 3.5, withAlpha('#ffffff', 0.7));
+    cv.roundRect(x + 22, top + bh - 15, 46, 7, 3.5, withAlpha(t.crit, 0.85));
+    cv.roundRect(x + bw - 68, top + bh - 15, 46, 7, 3.5, withAlpha(t.crit, 0.85));
+}
+
+function tires(cv, st, S, M) {
+    const t = st.t, cx = 800, top = S.y + 34, bw = 236, bh = S.h - 60, un = M.units || U.DEFAULTS;   // psi / °F inside (0.13.6)
+    const TC = { cold: t.cold, ok: GREEN, hot: t.crit }, PC = { low: t.warn, ok: t.text, high: t.warn };
+    title(cv, st, S, 'Tires', '');
+    carOutline(cv, st, cx, top, bw, bh);
+    const tw = 54, th = 104, spots = [['fl', -1, 0.12], ['fr', 1, 0.12], ['rl', -1, 0.62], ['rr', 1, 0.62]];
+    const NAMES = { fl: 'Front left', fr: 'Front right', rl: 'Rear left', rr: 'Rear right' };
+    spots.forEach((s) => {
+        const k = s[0], side = s[1], d = M.tires[k] || {}, ts = tempState(d.t), ps = pressState(d.p, d.target), tg = isNum(d.target);
+        const c = ts ? TC[ts] : t.track;
+        const x = side < 0 ? cx - bw / 2 - tw + 10 : cx + bw / 2 - 10, y = top + bh * s[2];
+        cv.roundRect(x - 6, y - 6, tw + 12, th + 12, 14, withAlpha(c, 0.18));
+        cv.roundRect(x, y, tw, th, 10, c);
+        for (let i = 1; i < 6; i++) cv.fillRect(x + 8, y + i * th / 6, tw - 16, 2, withAlpha('#000000', 0.25));
+        // the card beside it
+        const cw = 400, chh = 178, cxp = side < 0 ? x - 40 - cw : x + tw + 40, cyp = y + th / 2 - chh / 2;
+        st.plate(cv, cxp, cyp, cw, chh, ps === 'ok' ? null : PC[ps]);
+        cv.line(side < 0 ? cxp + cw : cxp, y + th / 2, side < 0 ? x - 6 : x + tw + 6, y + th / 2, 1.5, withAlpha(t.text, 0.25));
+        const L0 = cxp + 22, R0 = cxp + cw - 22;
+        st.txt(cv, NAMES[k], L0, cyp + 32, 17, t.dim);
+        if (ps && ps !== 'ok') pill(cv, st, R0, cyp + 12, ps === 'low' ? 'Low' : 'High', t.warn, { align: 'right', size: 14, h: 26 });
+        const ptxt = U.pressText(d.p, un.press), pw = st.numW(cv, ptxt, 72);
+        st.num(cv, ptxt, L0 - 2, cyp + 104, 72, ps ? PC[ps] : t.dim);
+        st.txt(cv, U.pressUnit(un.press), L0 + pw + 8, cyp + 104, 22, t.dim);
+        // temperature, right
+        const ttxt = isNum(d.t) ? String(U.tempNum(d.t, un.temp)) : '--';
+        st.num(cv, ttxt + U.tempUnit(un.temp), R0, cyp + 100, 40, ts ? TC[ts] : t.dim, { align: 'right' });
+        st.txt(cv, ts === 'cold' ? 'Cold' : ts === 'hot' ? 'Hot' : ts === 'ok' ? 'In range' : 'No data', R0, cyp + 66, 14, ts ? TC[ts] : t.dim, { align: 'right' });
+        // pressure vs target: a scale with the target mark (no target from the car: no scale)
+        const sx = L0, sw = cw - 44, sy = cyp + 126;
+        cv.roundRect(sx, sy, sw, 8, 4, t.track);
+        if (tg) {
+            const lo = d.target - 6, hi = d.target + 8, P = (v) => sx + Math.max(0, Math.min(1, (v - lo) / (hi - lo))) * sw;
+            cv.roundRect(P(d.target - 2), sy, P(d.target + 4) - P(d.target - 2), 8, 4, withAlpha(GREEN, 0.45));
+            cv.fillRect(P(d.target) - 1.5, sy - 6, 3, 20, t.text);
+            if (isNum(d.p)) { cv.circle(P(d.p), sy + 4, 9, t.bg); cv.circle(P(d.p), sy + 4, 7, ps ? PC[ps] : t.dim); }
+        }
+        st.txt(cv, 'Target ' + (tg ? U.pressText(d.target, un.press) + ' ' + U.pressUnit(un.press) : '--'), L0, cyp + 164, 15, t.dim);
+        if (tg && isNum(d.p)) st.txt(cv, U.pressDelta(d.p - d.target, un.press), R0, cyp + 164, 15, ps ? PC[ps] : t.dim, { align: 'right' });
+    });
+    // legend + freshness, bottom centre-left (the dots and the G are bottom right)
+    const ly = S.y + S.h - 30;
+    let lx = S.x + 6;
+    [['Cold', t.cold], ['In range', GREEN], ['Hot', t.crit]].forEach((p) => {
+        cv.roundRect(lx, ly + 4, 22, 12, 4, p[1]); st.txt(cv, p[0], lx + 30, ly + 16, 14, t.dim); lx += 30 + st.txtW(cv, p[0], 14) + 22;
+    });
+    st.txt(cv, 'Tire temps are TPMS air temps, not tread', lx + 10, ly + 16, 14, withAlpha(t.dim, 0.8));
+    st.txt(cv, M.fresh, 1300, S.y + 30, 15, t.dim, { align: 'right' });
+}
+
+
+module.exports = { SCREENS, HOME, GREEN, style, dots, dotsBox, toast, pill, quickTile, fitTxt, pickLayout, pickRows, pickFoot, warmup, gforce, tires };

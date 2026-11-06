@@ -1,14 +1,21 @@
 {
   "schema": 1,
   "apps": {
-    "path": "apps/*",
+    "path": "apps/dv_lci_budiky",
     "manifest": "app.json",
     "icon": "icon.png",
-    "exclude": ["_template", "wip"],
-    "mguHmi": ["ID7"],
+    "exclude": [
+      "_template",
+      "wip"
+    ],
+    "mguHmi": [
+      "ID7"
+    ],
     "build": {
-      "python": "kit/tools/build.py",
-      "args": ["{id}"],
+      "python": "kit/tools/build_lci.py",
+      "args": [
+        "{id}"
+      ],
       "sdk": "oap-sdk",
       "output": "dist/{id}@{version}.tgz"
     }

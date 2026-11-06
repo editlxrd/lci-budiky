@@ -1,0 +1,12 @@
+'use strict';
+const assert=require('assert'),{Controls,PAGES}=require('../apps/dv_lci_budiky/core/lci_controls');
+const values={},writes=[];const settings={get:k=>values[k],set:(k,v)=>{values[k]=v;writes.push([k,v]);}};
+const c=new Controls(settings);assert.equal(c.snapshot().bc,0);
+for(let i=1;i<=PAGES.length;i++)assert.equal(c.nextBC(),i%PAGES.length);
+assert.equal(values.lciBCPage,0);assert.equal(writes.length,PAGES.length);
+values.lciBCPage=999;assert.equal(c.snapshot().bc,0,'invalid saved page falls back');
+c.toggle('lciShift');assert.equal(c.snapshot().shift,false);
+c.toggle('lciShift');assert.equal(c.snapshot().shift,true);
+assert.throws(()=>c.toggle('clusterControl'),'UI cannot turn on the unfinished legacy cluster');
+assert.equal(values.clusterControl,undefined);
+console.log('PASS BC cycling/persistence, invalid state recovery and independent settings');

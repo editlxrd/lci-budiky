@@ -1,13 +1,11 @@
-# Custom Cluster – první základ na G’s Dash
+# LCI Budíky 0.3.0
 
-Stav 6. 11. 2026: místní kopie otevřeného projektu nickgcode/idrive7-apps, větev feat/oem-red-cluster. Žádné změny produktu, instalace do auta ani publikace na GitHub zatím neproběhly. Náš vzhled do tohoto základu ještě není přenesen. Toto není hotový instalační balíček Custom Cluster.
+Vytvořeno Davidem My (330e).
 
-- Technické porovnání: docs/porovnani/2026-11-06.md
-- Návrh přenosu: docs/porovnani/NAVRH.md
-- Původní dokumentace a licence: README.md, LICENSE, apps/ng_gsdash/LICENSE.
-- Původ: https://github.com/nickgcode/idrive7-apps
-- Výchozí commit: 0c0eec6b9bf8c40791f38ef1ccc9fafcb1982a33, G’s Dash 0.19.0.
+Vlastní česká aplikace s rozhraním Budíky, Nastavení a Diagnostika, fontem Inter a náhradním BC tlačítkem. Schválená červená grafika je připojená k samostatnému rendereru se čtyřmi vrstvami.
 
-David ve svém 330e potvrdil zobrazení G’s Dash jen v režimu Sport Individual. Tato informace má přednost před předpoklady o jiných jízdních režimech. Nebudeme kvůli tomu překódovávat KOMBI pro všechny režimy.
+První test vyžaduje čerstvé P z EGS, rychlost pod 1 km/h, Sport Individual a platné otáčky. Trvá nejvýše 60 sekund. Po změně podmínek, ztrátě dat nebo opuštění aplikace se vypne. Na cílovém voze zatím ověřeno není.
 
-Repozitář má zatím pouze vzdálený zdroj upstream. Není veřejně publikovaný a do MGU Store se tato místní složka jako GitHub adresa přidat nedá.
+Spusť `Spustit-LCI-Budiky.command` a otevři http://127.0.0.1:64558/. Jde o App Kit emulátor skutečného rozhraní; spodní technický panel není součástí aplikace v autě. Bez vozidla nelze spustit test KOMBI.
+
+Instalace přes vlastní veřejný zdroj MGU Store a podrobnosti jsou v README.md. BMW SDK, firmware ani soukromé záznamy vozidla nejsou součástí repozitáře.

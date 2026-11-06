@@ -14,3 +14,7 @@ node_modules/
 __pycache__/
 *.pyc
 .DS_Store
+
+# Host emulation state; never deploy or publish
+preview/
+preview-stage/

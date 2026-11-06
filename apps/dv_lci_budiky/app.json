@@ -1,0 +1,210 @@
+{
+  "id": "dv_lci_budiky",
+  "title": "LCI Budíky",
+  "description": "LCI Budíky pro BMW 330e. Česká aplikace a vlastní červené G20 budíky, náhradní BC a diagnostika. První testovací verze: pouze potvrzené P, rychlost pod 1 km/h a Sport Individual, nejvýše 60 s. Při výpadku dat se vypne. Vytvořeno Davidem My (330e).",
+  "version": "0.3.0",
+  "vendor": "dv",
+  "loggingId": "DVLC",
+  "iconGlyph": "gauge",
+  "internet": false,
+  "share": [
+    "ng_spotify/spotify/spotify.js",
+    "ng_spotify/spotify/signin.js",
+    "ng_spotify/spotify/signin_config.js",
+    "ng_spotify/vendor/qrcodegen.js",
+    "ng_spotify/vendor/jpeg_decoder.js",
+    "ng_tv/net/tv_net.js"
+  ],
+  "signals": {
+    "de.bmw.infotainment.vehicle.CDS": {
+      "statusEngineSpeed2": "rs",
+      "statusEngineTemperature": "rs"
+    },
+    "de.bmw.infotainment.vehicle.CDS2": {
+      "statusLongitudinalAccelerationMassCenter": "rs",
+      "statusLateralAccelerationMassCenter": "rs"
+    },
+    "de.bmw.infotainment.vehicle.Vehicle2": {
+      "statusCarSpeed2": "rs"
+    },
+    "de.bmw.infrastructure.VehicleInformation": {
+      "statusGearboxDrive": "s",
+      "DataPowerTrain2": "s"
+    },
+    "de.bmw.infotainment.drivingexcitement.FES": {
+      "_optional": "the drive mode badge, and which per-mode Logo plays: statusFESVehicleDynamicSwitchHMI.actualValueModeDrivingExperience (enum ActualValueModeDrivingExperience2, by name or number); its pop-up request flags mark a change",
+      "statusFESVehicleDynamicSwitchHMI": "rs",
+      "statusActualValueTorque2": "rs"
+    },
+    "de.bmw.infotainment.misc.MDrive": {
+      "_optional": "the gearbox program beside the gear (DS, M3): dataDisplayGearbox.displayProgramGearbox (S / M program, by name or number; notifier only); without it the gear shows as before",
+      "dataDisplayGearbox": "s"
+    },
+    "de.bmw.infotainment.vehicle.TPMS": {
+      "_optional": "the Tires screen: pressures, temperatures, targets, status (UInt16 raw: pressure x0.1 in the car's unit, temperature raw-40; read every 10 s; raw values logged and on the diagnostics page)",
+      "statusTyrePressure": "rs",
+      "statusTyreTemperature": "rs",
+      "statusTargetTyrePressure": "rs",
+      "statusTyresStatus": "rs"
+    },
+    "de.bmw.infotainment.vehicle.Vehicle": {
+      "_optional": "the car's display units (air pressure, temperature) for the TPMS values",
+      "statusNewCurrentUnitsStatusExt": "rs"
+    },
+    "de.bmw.infotainment.navigation.navigationstatus.NavigationStatus": {
+      "_optional": "the cluster logo's route guidance check: guidingState (INACTIVE / CALCULATING_ROUTE / ACTIVE; ACTIVE hides the logo); without it the logo goes by the phone's signals, and with none it stays shown",
+      "guidingState": "rs"
+    },
+    "de.bmw.infotainment.a4a.carplay.CarPlayManager": {
+      "_optional": "the cluster logo's CarPlay route guidance check (Waze or Maps with a route): projectedGuidanceActive; without it the logo shows over Waze's map during a CarPlay route too",
+      "_instances": "CarPlayManagerInst1",
+      "projectedGuidanceActive": "rs"
+    },
+    "de.bmw.infotainment.sdi.aap.androidautoprojectedmanager.AndroidAutoProjectedManager": {
+      "_optional": "the cluster logo's Android Auto route guidance check: projectedGuidanceActive",
+      "_instances": "AndroidAutoProjectedManagerInst1",
+      "projectedGuidanceActive": "rs"
+    },
+    "de.bmw.infotainment.hmi.hmimediastate.HmiMediaState": {
+      "playerMetadata": "rs"
+    },
+    "com.harman.infotainment.systemfunctions.tasu.tasu.InternalTasu": {
+      "_instances": "SystemFunctionsInternalTasuInst1",
+      "_methods": [
+        "sendTasuRequest"
+      ],
+      "_broadcasts": [
+        "sendTasuResponse"
+      ]
+    }
+  },
+  "config": {},
+  "screens": [
+    {
+      "name": "MAIN",
+      "kind": "canvas",
+      "title": "LCI Budíky",
+      "fullscreen": true,
+      "settingsTab": false,
+      "buttons": [
+        [
+          "BTN_BC",
+          "Další hodnoty BC"
+        ],
+        [
+          "BTN_LCI_SETTINGS",
+          "Nastavení"
+        ],
+        [
+          "BTN_DIAG",
+          "Diagnostika"
+        ],
+        [
+          "BTN_MAIN",
+          "Budíky"
+        ]
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "key": "lciEnabled",
+      "label": "Požadavek na budíky",
+      "type": "choice",
+      "default": "off",
+      "options": [
+        [
+          "off",
+          "Vypnuto"
+        ],
+        [
+          "on",
+          "Zapnuto"
+        ]
+      ]
+    },
+    {
+      "key": "lciBCPage",
+      "label": "Stránka BC",
+      "type": "number",
+      "default": 0,
+      "steps": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "key": "lciMap",
+      "label": "Zachovat mapu",
+      "type": "choice",
+      "default": "on",
+      "options": [
+        [
+          "on",
+          "Ano"
+        ],
+        [
+          "off",
+          "Ne"
+        ]
+      ]
+    },
+    {
+      "key": "lciShift",
+      "label": "Shift lights",
+      "type": "choice",
+      "default": "on",
+      "options": [
+        [
+          "on",
+          "Zapnuté"
+        ],
+        [
+          "off",
+          "Vypnuté"
+        ]
+      ]
+    },
+    {
+      "key": "lciShiftAt",
+      "label": "Bod přeřazení",
+      "type": "number",
+      "unit": "rpm",
+      "default": 6000,
+      "steps": [
+        5000,
+        5500,
+        6000,
+        6500,
+        7000
+      ]
+    }
+  ],
+  "retiredSettings": [
+    "demo",
+    "layout",
+    "renderer",
+    "speedUnit",
+    "spotifyPoll",
+    "showBadge",
+    "lights",
+    "theme",
+    "bars",
+    "showcase",
+    "showcaseBg"
+  ],
+  "author": "David My (330e)",
+  "license": "GPL-3.0-or-later",
+  "mguHmi": [
+    "ID7"
+  ],
+  "requires": {
+    "cluster-render": "0.2.2"
+  }
+}

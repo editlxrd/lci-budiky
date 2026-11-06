@@ -1,0 +1,13 @@
+{
+  "name": "lci-budiky-source",
+  "version": "0.3.0",
+  "private": true,
+  "scripts": {
+    "test": "node kit/tools/test_lci.js"
+  },
+  "devDependencies": {
+    "acorn": "8.15.0",
+    "fontkit": "2.0.4",
+    "@resvg/resvg-js": "2.6.2"
+  }
+}

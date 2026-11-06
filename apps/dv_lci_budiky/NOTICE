@@ -1,0 +1,14 @@
+LCI Budíky – Vytvořeno Davidem My (330e)
+
+The modified LCI app is GPL-3.0-or-later; see LICENSE.
+Based on G’s Dash by Nick G (2026), https://github.com/nickgcode/idrive7-apps,
+MIT. Its original MIT copyright/permission notice and bundled third-party
+notices remain in licenses.pack (data/licenses/ in this source tree).
+The shared App Kit remains under its original MIT licence; see kit/LICENSE.idrive7-apps.
+The installed cluster-render client's MPL-2.0 code is loaded from that tool,
+not bundled by this app. Its service remains a separately installed dependency.
+Inter: Rasmus Andersson, SIL OFL 1.1; see data/fonts/LICENSE-Inter.txt.
+Approved layout geometry comes from this project's earlier personal prototype;
+no BMW Type Next font is included. The small BMW M mark is BMW's artwork,
+used as a design element, with no claim of ownership or BMW endorsement.
+No BMW OAP SDK, firmware, vehicle captures or authentication material is included.
